@@ -1,0 +1,11 @@
+# ppx FTP re-listing artifact; regenerate by running massive_usis.py
+output/file_cache.json
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+
+# Environments
+.venv/
+venv/
+env/
