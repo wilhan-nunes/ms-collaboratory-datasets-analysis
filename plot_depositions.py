@@ -17,17 +17,26 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-SURFACE = "#fcfcfb"
-SERIES = "#2a78d6"
-INK = "#1a1a19"
-INK_MUTED = "#6b6b68"
-GRID = "#e5e5e2"
+# Only show depositions from this year onward.
+MIN_YEAR = 2022
+
+# Custom color palette
+SURFACE = "#f9f7f2"   # warm off-white background
+SERIES = "#1b6f6f"    # teal bars
+INK = "#26292b"       # near-black text (titles)
+INK_MUTED = "#6f7378"  # muted grey text (labels, ticks)
+SPINE = "#c9cdcb"      # light grey for the remaining bottom spine
 
 
 def plot(df, keyword, out_path, freq):
     dates = pd.to_datetime(df["deposition_date"], errors="coerce").dropna()
     if dates.empty:
         raise SystemExit("No usable deposition dates in the CSV.")
+
+    # Restrict to MIN_YEAR onward so the plot starts from 2022.
+    dates = dates[dates.dt.year >= MIN_YEAR]
+    if dates.empty:
+        raise SystemExit(f"No deposition dates on or after {MIN_YEAR}.")
 
     # Reindex over the full span so empty periods show as zero-height bars. A
     # value_counts alone drops them, which silently compresses the time axis.
@@ -95,12 +104,10 @@ def plot(df, keyword, out_path, freq):
             color=INK_MUTED,
         )
 
-    ax.yaxis.grid(True, color=GRID, linewidth=1, zorder=0)
-    ax.set_axisbelow(True)
-    ax.xaxis.grid(False)
+    # Grid removed per request; no ax.yaxis.grid / ax.xaxis.grid calls.
     for side in ("top", "right", "left"):
         ax.spines[side].set_visible(False)
-    ax.spines["bottom"].set_color(GRID)
+    ax.spines["bottom"].set_color(SPINE)
     ax.tick_params(colors=INK_MUTED, length=0)
     # Headroom so the tallest bar's value label doesn't collide with the title.
     ax.set_ylim(0, counts.max() * 1.15)
