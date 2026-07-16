@@ -41,7 +41,7 @@ Tick `refresh` to discard that cache and re-list every dataset from scratch.
 | `usis.txt` | every USI, one per line |
 | `usis_by_dataset.json` | `{accession: [usi, ...]}` |
 | `gnps2_links.txt` | launch URLs, grouped and commented by dataset |
-| `depositions_over_time.png` + `_table.csv` | the bar plot and its underlying counts |
+| `depositions_over_time.png` + `_table.csv` | the bar plot (from `--min-year` onward) and per-year counts for every year |
 | `file_cache.json` | raw ppx listings; reused so reruns skip the slow FTP walk. Gitignored — regenerated on first run |
 
 ## USI and link format

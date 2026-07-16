@@ -17,8 +17,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-# Default cutoff; override with --min-year.
-MIN_YEAR = 2022
+# First year drawn on the plot; override with --min-year. The table keeps every
+# year regardless, so this hides bars without dropping data.
+MIN_YEAR = 2024
 
 # Custom color palette
 SURFACE = "#f9f7f2"   # warm off-white background
@@ -33,23 +34,26 @@ def plot(df, keyword, out_path, freq, min_year=MIN_YEAR):
     if dates.empty:
         raise SystemExit("No usable deposition dates in the CSV.")
 
-    dates = dates[dates.dt.year >= min_year]
-    if dates.empty:
-        raise SystemExit(f"No deposition dates on or after {min_year}.")
-
     # Reindex over the full span so empty periods show as zero-height bars. A
     # value_counts alone drops them, which silently compresses the time axis.
     if freq == "year":
         years = dates.dt.year
         counts = years.value_counts().reindex(range(years.min(), years.max() + 1), fill_value=0).sort_index()
-        labels = [str(i) for i in counts.index]
         xlabel = "Year of deposition"
     else:
         periods = dates.dt.to_period("Q")
         full = pd.period_range(periods.min(), periods.max(), freq="Q")
         counts = periods.value_counts().reindex(full, fill_value=0).sort_index()
-        labels = [str(p) for p in counts.index]
         xlabel = "Quarter of deposition"
+
+    # Counted over every period first: the table written at the end reports the
+    # full history, and min_year only decides where the bars start.
+    full_counts = counts
+    index_years = counts.index if freq == "year" else [p.year for p in counts.index]
+    counts = counts[[year >= min_year for year in index_years]]
+    if counts.empty:
+        raise SystemExit(f"No depositions on or after {min_year}; nothing to plot.")
+    labels = [str(i) for i in counts.index]
 
     # The current period is still accruing; flag it rather than let it read as a decline.
     now = pd.Timestamp.now()
@@ -116,7 +120,7 @@ def plot(df, keyword, out_path, freq, min_year=MIN_YEAR):
     print(f"Wrote {out_path}")
 
     table = out_path.rsplit(".", 1)[0] + "_table.csv"
-    counts.rename("datasets").rename_axis(freq).to_csv(table)
+    full_counts.rename("datasets").rename_axis(freq).to_csv(table)
     print(f"Wrote {table}")
 
 
@@ -127,7 +131,7 @@ def main():
     ap.add_argument("--out", default=os.path.join(here, "output", "depositions_over_time.png"))
     ap.add_argument("--keyword", default="mscollaboratory")
     ap.add_argument("--freq", choices=["year", "quarter"], default="year")
-    ap.add_argument("--min-year", type=int, default=MIN_YEAR, help="Only plot depositions from this year onward.")
+    ap.add_argument("--min-year", type=int, default=MIN_YEAR, help="First year drawn on the plot; the table still lists every year.")
     args = ap.parse_args()
 
     plot(pd.read_csv(args.csv), args.keyword, args.out, args.freq, args.min_year)

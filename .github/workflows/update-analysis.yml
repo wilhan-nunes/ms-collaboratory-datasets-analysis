@@ -1,7 +1,7 @@
 name: Update analysis
 
-# On-demand only: run it from the Actions tab (or `gh workflow run update-analysis.yml`).
-# To also run it on a schedule, uncomment the `schedule` block below.
+# Runs monthly on a schedule, and on demand from the Actions tab (or
+# `gh workflow run update-analysis.yml`).
 on:
   workflow_dispatch:
     inputs:
@@ -15,15 +15,17 @@ on:
         type: choice
         options: [year, quarter]
       min_year:
-        description: "Only plot depositions from this year onward"
-        default: "2022"
+        description: "First year drawn on the plot (the table keeps every year)"
+        default: "2024"
         type: string
       refresh:
         description: "Ignore the ppx file cache and re-list every dataset (slow)"
         default: false
         type: boolean
-  # schedule:
-  #   - cron: "0 6 1 * *"   # 06:00 UTC on the 1st of each month
+  # Only fires from the default branch. GitHub disables schedules after 60 days
+  # with no repo activity; the commit-back step should keep this one alive.
+  schedule:
+    - cron: "0 6 1 * *"   # 06:00 UTC on the 1st of each month
 
 # Needed for the commit-back step.
 permissions:
@@ -43,7 +45,7 @@ jobs:
     env:
       KEYWORD: ${{ inputs.keyword || 'mscollaboratory' }}
       FREQ: ${{ inputs.freq || 'year' }}
-      MIN_YEAR: ${{ inputs.min_year || '2022' }}
+      MIN_YEAR: ${{ inputs.min_year || '2024' }}
       REFRESH: ${{ inputs.refresh || false }}
     # The FTP walk over every dataset dominates the runtime; the default 360 min
     # would burn a lot of minutes if MassIVE hangs.
