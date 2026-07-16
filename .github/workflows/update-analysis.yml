@@ -1,0 +1,95 @@
+name: Update analysis
+
+# On-demand only: run it from the Actions tab (or `gh workflow run update-analysis.yml`).
+# To also run it on a schedule, uncomment the `schedule` block below.
+on:
+  workflow_dispatch:
+    inputs:
+      keyword:
+        description: "MassIVE keyword search"
+        default: "mscollaboratory"
+        type: string
+      freq:
+        description: "Timeline bucket for the plot"
+        default: "year"
+        type: choice
+        options: [year, quarter]
+      refresh:
+        description: "Ignore the ppx file cache and re-list every dataset (slow)"
+        default: false
+        type: boolean
+  # schedule:
+  #   - cron: "0 6 1 * *"   # 06:00 UTC on the 1st of each month
+
+# Needed for the commit-back step.
+permissions:
+  contents: write
+
+# A second run while one is in flight would race on the same commit.
+concurrency:
+  group: update-analysis
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # A scheduled run supplies no inputs, so fall back to the same defaults the
+    # dispatch form shows. Routing the values through env also keeps user input
+    # out of the shell commands themselves.
+    env:
+      KEYWORD: ${{ inputs.keyword || 'mscollaboratory' }}
+      FREQ: ${{ inputs.freq || 'year' }}
+      REFRESH: ${{ inputs.refresh || false }}
+    # The FTP walk over every dataset dominates the runtime; the default 360 min
+    # would burn a lot of minutes if MassIVE hangs.
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # file_cache.json is gitignored, so without this every run re-walks FTP for
+      # every dataset. Restoring it means only new accessions get listed.
+      # The key is unique per run so the cache always misses and re-saves,
+      # while restore-keys loads the newest previous one — that's what lets each
+      # run start from the last run's cache and add to it.
+      - name: Restore ppx file cache
+        if: ${{ env.REFRESH != 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: output/file_cache.json
+          key: ppx-cache-${{ env.KEYWORD }}-${{ github.run_id }}
+          restore-keys: |
+            ppx-cache-${{ env.KEYWORD }}-
+
+      - name: Build USIs and links
+        run: python massive_usis.py --keyword "$KEYWORD" ${{ env.REFRESH == 'true' && '--refresh' || '' }}
+
+      - name: Plot depositions
+        run: python plot_depositions.py --keyword "$KEYWORD" --freq "$FREQ"
+
+      # Downloadable even when nothing changed, and it outlives a failed commit.
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-output
+          path: output/
+          retention-days: 30
+
+      - name: Commit updated outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add output/
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Update analysis (keyword: $KEYWORD)"
+          git push

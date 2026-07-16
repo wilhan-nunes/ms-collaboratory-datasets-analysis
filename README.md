@@ -6,7 +6,7 @@ plots depositions over time.
 
 ## Install
 
-    pip install requests ppx pandas matplotlib
+    pip install -r requirements.txt
 
 ## Run
 
@@ -15,6 +15,23 @@ plots depositions over time.
 
 Useful flags: `--keyword`, `--outdir`, `--refresh` (bypass the file cache),
 `--max-url-chars`; `--freq quarter` on the plot.
+
+## Refresh on GitHub Actions
+
+`.github/workflows/update-analysis.yml` runs the whole pipeline on demand: go to the
+repo's **Actions** tab, pick **Update analysis**, and hit **Run workflow**. The form
+takes `keyword`, `freq` (year/quarter), and `refresh`. From the CLI:
+
+    gh workflow run update-analysis.yml -f keyword=mscollaboratory -f freq=year
+
+It regenerates everything in `output/`, commits the result back to the branch if
+anything changed, and attaches the same files as a downloadable run artifact.
+Everything it queries is public, so no secrets or repository configuration are
+needed. A monthly `schedule` trigger is included but commented out.
+
+Between runs the workflow carries `file_cache.json` in the Actions cache, so it only
+FTP-lists accessions it hasn't seen — the first run is slow, later ones are not.
+Tick `refresh` to discard that cache and re-list every dataset from scratch.
 
 ## Outputs (`output/`)
 
