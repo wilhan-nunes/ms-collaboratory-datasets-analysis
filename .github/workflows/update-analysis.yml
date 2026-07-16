@@ -14,6 +14,10 @@ on:
         default: "year"
         type: choice
         options: [year, quarter]
+      min_year:
+        description: "Only plot depositions from this year onward"
+        default: "2022"
+        type: string
       refresh:
         description: "Ignore the ppx file cache and re-list every dataset (slow)"
         default: false
@@ -39,6 +43,7 @@ jobs:
     env:
       KEYWORD: ${{ inputs.keyword || 'mscollaboratory' }}
       FREQ: ${{ inputs.freq || 'year' }}
+      MIN_YEAR: ${{ inputs.min_year || '2022' }}
       REFRESH: ${{ inputs.refresh || false }}
     # The FTP walk over every dataset dominates the runtime; the default 360 min
     # would burn a lot of minutes if MassIVE hangs.
@@ -74,7 +79,7 @@ jobs:
         run: python massive_usis.py --keyword "$KEYWORD" ${{ env.REFRESH == 'true' && '--refresh' || '' }}
 
       - name: Plot depositions
-        run: python plot_depositions.py --keyword "$KEYWORD" --freq "$FREQ"
+        run: python plot_depositions.py --keyword "$KEYWORD" --freq "$FREQ" --min-year "$MIN_YEAR"
 
       # Downloadable even when nothing changed, and it outlives a failed commit.
       - name: Upload outputs

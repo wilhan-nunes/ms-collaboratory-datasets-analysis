@@ -17,7 +17,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-# Only show depositions from this year onward.
+# Default cutoff; override with --min-year.
 MIN_YEAR = 2022
 
 # Custom color palette
@@ -28,15 +28,14 @@ INK_MUTED = "#6f7378"  # muted grey text (labels, ticks)
 SPINE = "#c9cdcb"      # light grey for the remaining bottom spine
 
 
-def plot(df, keyword, out_path, freq):
+def plot(df, keyword, out_path, freq, min_year=MIN_YEAR):
     dates = pd.to_datetime(df["deposition_date"], errors="coerce").dropna()
     if dates.empty:
         raise SystemExit("No usable deposition dates in the CSV.")
 
-    # Restrict to MIN_YEAR onward so the plot starts from 2022.
-    dates = dates[dates.dt.year >= MIN_YEAR]
+    dates = dates[dates.dt.year >= min_year]
     if dates.empty:
-        raise SystemExit(f"No deposition dates on or after {MIN_YEAR}.")
+        raise SystemExit(f"No deposition dates on or after {min_year}.")
 
     # Reindex over the full span so empty periods show as zero-height bars. A
     # value_counts alone drops them, which silently compresses the time axis.
@@ -128,9 +127,10 @@ def main():
     ap.add_argument("--out", default=os.path.join(here, "output", "depositions_over_time.png"))
     ap.add_argument("--keyword", default="mscollaboratory")
     ap.add_argument("--freq", choices=["year", "quarter"], default="year")
+    ap.add_argument("--min-year", type=int, default=MIN_YEAR, help="Only plot depositions from this year onward.")
     args = ap.parse_args()
 
-    plot(pd.read_csv(args.csv), args.keyword, args.out, args.freq)
+    plot(pd.read_csv(args.csv), args.keyword, args.out, args.freq, args.min_year)
 
 
 if __name__ == "__main__":
