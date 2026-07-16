@@ -56,6 +56,8 @@ jobs:
 
       # file_cache.json is gitignored, so without this every run re-walks FTP for
       # every dataset. Restoring it means only new accessions get listed.
+      # Note: caches are scoped to the branch that wrote them, so runs dispatched
+      # from a non-default branch start cold rather than reusing master's cache.
       # The key is unique per run so the cache always misses and re-saves,
       # while restore-keys loads the newest previous one — that's what lets each
       # run start from the last run's cache and add to it.
